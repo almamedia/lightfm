@@ -17,6 +17,9 @@ doc/_build/*
 lightfm/_lightfm_fast_openmp.pyx
 lightfm/_lightfm_fast_no_openmp.pyx
 *.*-checkpoint
+*.csv
+*.pcl
+.DS_store
 
 # Editor specific
 .vscode/

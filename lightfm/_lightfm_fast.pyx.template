@@ -545,7 +545,10 @@ cdef void warp_update(double loss,
                       flt *neg_it_repr,
                       FastLightFM lightfm,
                       double item_alpha,
-                      double user_alpha) nogil:
+                      double user_alpha,
+                      int is_locked_item_id_pos,
+                      int is_locked_item_id_neg,
+                      int is_locked_user_id) nogil:
     """
     Apply the gradient step.
     """
@@ -568,35 +571,40 @@ cdef void warp_update(double loss,
     user_start_index = user_features.get_row_start(user_id)
     user_stop_index = user_features.get_row_end(user_id)
 
-    avg_learning_rate += update_biases(item_features, positive_item_start_index,
-                                       positive_item_stop_index,
-                                       lightfm.item_biases, lightfm.item_bias_gradients,
-                                       lightfm.item_bias_momentum,
-                                       -loss,
-                                       lightfm.adadelta,
-                                       lightfm.learning_rate,
-                                       item_alpha,
-                                       lightfm.rho,
-                                       lightfm.eps)
-    avg_learning_rate += update_biases(item_features, negative_item_start_index,
-                                       negative_item_stop_index,
-                                       lightfm.item_biases, lightfm.item_bias_gradients,
-                                       lightfm.item_bias_momentum,
-                                       loss,
-                                       lightfm.adadelta,
-                                       lightfm.learning_rate,
-                                       item_alpha,
-                                       lightfm.rho,
-                                       lightfm.eps)
-    avg_learning_rate += update_biases(user_features, user_start_index, user_stop_index,
-                                       lightfm.user_biases, lightfm.user_bias_gradients,
-                                       lightfm.user_bias_momentum,
-                                       loss,
-                                       lightfm.adadelta,
-                                       lightfm.learning_rate,
-                                       user_alpha,
-                                       lightfm.rho,
-                                       lightfm.eps)
+    if is_locked_item_id_pos == 0:
+        avg_learning_rate += update_biases(item_features, positive_item_start_index,
+                                        positive_item_stop_index,
+                                        lightfm.item_biases, lightfm.item_bias_gradients,
+                                        lightfm.item_bias_momentum,
+                                        -loss,
+                                        lightfm.adadelta,
+                                        lightfm.learning_rate,
+                                        item_alpha,
+                                        lightfm.rho,
+                                        lightfm.eps)
+
+    if is_locked_item_id_neg == 0:
+        avg_learning_rate += update_biases(item_features, negative_item_start_index,
+                                        negative_item_stop_index,
+                                        lightfm.item_biases, lightfm.item_bias_gradients,
+                                        lightfm.item_bias_momentum,
+                                        loss,
+                                        lightfm.adadelta,
+                                        lightfm.learning_rate,
+                                        item_alpha,
+                                        lightfm.rho,
+                                        lightfm.eps)
+
+    if is_locked_user_id == 0:
+        avg_learning_rate += update_biases(user_features, user_start_index, user_stop_index,
+                                        lightfm.user_biases, lightfm.user_bias_gradients,
+                                        lightfm.user_bias_momentum,
+                                        loss,
+                                        lightfm.adadelta,
+                                        lightfm.learning_rate,
+                                        user_alpha,
+                                        lightfm.rho,
+                                        lightfm.eps)
 
     # Update latent representations.
     for i in range(lightfm.no_components):
@@ -605,37 +613,40 @@ cdef void warp_update(double loss,
         positive_item_component = pos_it_repr[i]
         negative_item_component = neg_it_repr[i]
 
-        avg_learning_rate += update_features(item_features, lightfm.item_features,
-                                             lightfm.item_feature_gradients,
-                                             lightfm.item_feature_momentum,
-                                             i, positive_item_start_index, positive_item_stop_index,
-                                             -loss * user_component,
-                                             lightfm.adadelta,
-                                             lightfm.learning_rate,
-                                             item_alpha,
-                                             lightfm.rho,
-                                             lightfm.eps)
-        avg_learning_rate += update_features(item_features, lightfm.item_features,
-                                             lightfm.item_feature_gradients,
-                                             lightfm.item_feature_momentum,
-                                             i, negative_item_start_index, negative_item_stop_index,
-                                             loss * user_component,
-                                             lightfm.adadelta,
-                                             lightfm.learning_rate,
-                                             item_alpha,
-                                             lightfm.rho,
-                                             lightfm.eps)
-        avg_learning_rate += update_features(user_features, lightfm.user_features,
-                                             lightfm.user_feature_gradients,
-                                             lightfm.user_feature_momentum,
-                                             i, user_start_index, user_stop_index,
-                                             loss * (negative_item_component -
-                                                     positive_item_component),
-                                             lightfm.adadelta,
-                                             lightfm.learning_rate,
-                                             user_alpha,
-                                             lightfm.rho,
-                                             lightfm.eps)
+        if is_locked_item_id_pos == 0:
+            avg_learning_rate += update_features(item_features, lightfm.item_features,
+                                                lightfm.item_feature_gradients,
+                                                lightfm.item_feature_momentum,
+                                                i, positive_item_start_index, positive_item_stop_index,
+                                                -loss * user_component,
+                                                lightfm.adadelta,
+                                                lightfm.learning_rate,
+                                                item_alpha,
+                                                lightfm.rho,
+                                                lightfm.eps)
+        if is_locked_item_id_neg == 0:
+            avg_learning_rate += update_features(item_features, lightfm.item_features,
+                                                lightfm.item_feature_gradients,
+                                                lightfm.item_feature_momentum,
+                                                i, negative_item_start_index, negative_item_stop_index,
+                                                loss * user_component,
+                                                lightfm.adadelta,
+                                                lightfm.learning_rate,
+                                                item_alpha,
+                                                lightfm.rho,
+                                                lightfm.eps)
+        if is_locked_user_id == 0:
+            avg_learning_rate += update_features(user_features, lightfm.user_features,
+                                                lightfm.user_feature_gradients,
+                                                lightfm.user_feature_momentum,
+                                                i, user_start_index, user_stop_index,
+                                                loss * (negative_item_component -
+                                                        positive_item_component),
+                                                lightfm.adadelta,
+                                                lightfm.learning_rate,
+                                                user_alpha,
+                                                lightfm.rho,
+                                                lightfm.eps)
 
     avg_learning_rate /= ((lightfm.no_components + 1) * (user_stop_index - user_start_index)
                           + (lightfm.no_components + 1) *
@@ -784,11 +795,13 @@ def fit_logistic(CSRMatrix item_features,
 def fit_warp(CSRMatrix item_features,
              CSRMatrix user_features,
              CSRMatrix interactions,
-             int[::1] user_ids,
-             int[::1] item_ids,
+             int[::1] user_ids, # row
+             int[::1] item_ids, # col
              flt[::1] Y,
              flt[::1] sample_weight,
              int[::1] shuffle_indices,
+             int first_unlocked_item_id,
+             int first_unlocked_user_id,
              FastLightFM lightfm,
              double learning_rate,
              double item_alpha,
@@ -799,9 +812,9 @@ def fit_warp(CSRMatrix item_features,
     Fit the model using the WARP loss.
     """
 
-    cdef int i, no_examples, user_id, positive_item_id, gamma
-    cdef int negative_item_id, sampled, row
-    cdef double positive_prediction, negative_prediction
+    cdef int i, no_examples, user_id, positive_item_id, gamma, is_locked_item_id_pos, is_locked_item_id_neg, is_locked_user_id
+    cdef int negative_item_id, row
+    cdef double positive_prediction, negative_prediction, sampled
     cdef double loss, MAX_LOSS
     cdef flt weight
     cdef flt *user_repr
@@ -827,6 +840,18 @@ def fit_warp(CSRMatrix item_features,
 
             user_id = user_ids[row]
             positive_item_id = item_ids[row]
+
+            # check item
+            if positive_item_id < first_unlocked_item_id:
+                is_locked_item_id_pos = 1
+            else:
+                is_locked_item_id_pos = 0
+
+            # check user
+            if user_id < first_unlocked_user_id:
+                is_locked_user_id = 1
+            else:
+                is_locked_user_id = 0                
 
             if not Y[row] > 0:
                 continue
@@ -860,6 +885,11 @@ def fit_warp(CSRMatrix item_features,
                 negative_item_id = (rand_r(&random_states[{thread_num}])
                                     % item_features.rows)
 
+                if negative_item_id < first_unlocked_item_id:
+                    is_locked_item_id_neg = 1
+                else:
+                    is_locked_item_id_neg = 0
+
                 compute_representation(item_features,
                                        lightfm.item_features,
                                        lightfm.item_biases,
@@ -884,6 +914,7 @@ def fit_warp(CSRMatrix item_features,
                     if loss > MAX_LOSS:
                         loss = MAX_LOSS
 
+                    # Only update if not locked item_id
                     warp_update(loss,
                                 item_features,
                                 user_features,
@@ -895,7 +926,11 @@ def fit_warp(CSRMatrix item_features,
                                 neg_it_repr,
                                 lightfm,
                                 item_alpha,
-                                user_alpha)
+                                user_alpha,
+                                is_locked_item_id_pos,
+                                is_locked_item_id_neg,
+                                is_locked_user_id)
+
                     break
 
             if lightfm.item_scale > MAX_REG_SCALE or lightfm.user_scale > MAX_REG_SCALE:
@@ -1053,7 +1088,10 @@ def fit_warp_kos(CSRMatrix item_features,
                                 neg_it_repr,
                                 lightfm,
                                 item_alpha,
-                                user_alpha)
+                                user_alpha,
+                                0,
+                                0,
+                                0)
                     break
 
             if lightfm.item_scale > MAX_REG_SCALE or lightfm.user_scale > MAX_REG_SCALE:
@@ -1166,7 +1204,10 @@ def fit_bpr(CSRMatrix item_features,
                         neg_it_repr,
                         lightfm,
                         item_alpha,
-                        user_alpha)
+                        user_alpha,
+                        0,
+                        0,
+                        0)
 
             if lightfm.item_scale > MAX_REG_SCALE or lightfm.user_scale > MAX_REG_SCALE:
                 locked_regularize(lightfm,
