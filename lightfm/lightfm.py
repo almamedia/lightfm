@@ -203,7 +203,7 @@ class LightFM(object):
         max_sampled=10,
         random_state=None,
         first_unlocked_item_id=0,
-        first_unlocked_user_id=0
+        first_unlocked_user_id=0,
     ):
 
         assert item_alpha >= 0.0
@@ -495,7 +495,7 @@ class LightFM(object):
 
             return verbose_range()
 
-    def _resize(self, interactions, user_features=None, item_features=None):
+    def resize(self, interactions, user_features=None, item_features=None):
         """Resizes the model to accommodate new users/items/features"""
 
         no_components = self.no_components
@@ -605,7 +605,7 @@ class LightFM(object):
             num_threads=num_threads,
             verbose=verbose,
             first_unlocked_item_id=0,
-            first_unlocked_user_id=0
+            first_unlocked_user_id=0,
         )
 
     def fit_partial(
@@ -618,7 +618,7 @@ class LightFM(object):
         num_threads=1,
         verbose=False,
         first_unlocked_item_id=0,
-        first_unlocked_user_id=0
+        first_unlocked_user_id=0,
     ):
         """
         Fit the model.
@@ -664,14 +664,6 @@ class LightFM(object):
         LightFM instance
             the fitted model
         """
-
-        # Resize if second call
-        try:
-            self._check_initialized()
-            self._resize(interactions, user_features, item_features)
-        except ValueError:
-            # This is the first call so just fit without resizing
-            pass
 
         # We need this in the COO format.
         # If that's already true, this is a no-op.
@@ -721,7 +713,7 @@ class LightFM(object):
                 num_threads,
                 self.loss,
                 first_unlocked_item_id,
-                first_unlocked_user_id
+                first_unlocked_user_id,
             )
 
             self._check_finite()
@@ -737,7 +729,7 @@ class LightFM(object):
         num_threads,
         loss,
         first_unlocked_item_id,
-        first_unlocked_user_id
+        first_unlocked_user_id,
     ):
         """
         Run an individual epoch.
